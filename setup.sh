@@ -1,0 +1,13 @@
+#!/bin/bash
+echo "======================================"
+echo "  MediScanAI V7 - Setup"
+echo "======================================"
+cd backend && npm install && echo "✅ Backend ready"
+cd ../frontend && npm install && echo "✅ Frontend ready"
+echo ""
+echo "Next steps:"
+echo "  1. Edit backend/.env (add MONGODB_URI + JWT_SECRET)"
+echo "  2. cd backend && node seed.js   ← create demo accounts"  
+echo "  3. cd backend && node server.js ← start backend"
+echo "  4. cd frontend && npm run dev   ← start frontend"
+echo "  5. Open http://localhost:5173"
