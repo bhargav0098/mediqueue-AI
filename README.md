@@ -1,4 +1,4 @@
-# 🏥 MediScanAI Ultra V7
+# 🏥 MediScanAI 
 
 **AI-Powered Hospital Management System — Complete Edition**
 
@@ -6,7 +6,7 @@
 
 ---
 
-## 🆕 V7 New Features
+## 🆕  New Features
 
 | Feature | Details |
 |---------|---------|
@@ -41,7 +41,7 @@ npm install
 npm run dev
 ```
 
-Open: **http://localhost:5173**
+Open: **https://mediqueue-ai.vercel.app/login**
 
 ---
 
@@ -127,6 +127,4 @@ GET  /api/doctors                  — List doctors WITH fee info
 GET  /api/doctors/fees/:id         — Get single doctor fees
 ```
 
----
 
-Built with ❤️ — MediScanAI V7
