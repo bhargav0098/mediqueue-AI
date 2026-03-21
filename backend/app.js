@@ -6,27 +6,31 @@ const connectDB = require('./config/db');
 const app = express();
 
 // ── CORS must be FIRST — before everything including DB middleware ─────────────
-app.use(cors({
+const corsOptions = {
   origin: function (origin, callback) {
     // Allow server-to-server / curl (no origin header)
     if (!origin) return callback(null, true);
     if (
-      origin === 'http://localhost:5173' ||
-      origin === 'http://localhost:3000' ||
+      origin.includes('localhost') ||
       origin.endsWith('.vercel.app') ||
       (process.env.FRONTEND_URL && origin === process.env.FRONTEND_URL)
     ) {
       return callback(null, true);
     }
+    // In development, allow all
+    if (process.env.NODE_ENV !== 'production') return callback(null, true);
     return callback(new Error(`CORS blocked: ${origin}`));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-}));
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  optionsSuccessStatus: 200,
+};
 
-// Handle preflight OPTIONS requests immediately
-app.options('*', cors());
+app.use(cors(corsOptions));
+
+// Handle preflight OPTIONS requests immediately — must be before all routes
+app.options('*', cors(corsOptions));
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
