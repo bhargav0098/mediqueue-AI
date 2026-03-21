@@ -3,38 +3,50 @@ const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/db');
 
-const allowedOrigins = [
-  process.env.FRONTEND_URL || 'http://localhost:5173',
-  'http://localhost:5173',
-];
-
 const app = express();
 
-// Lazy DB connection for serverless
-let dbConnected = false;
-app.use(async (req, res, next) => {
-  try {
-    if (!dbConnected) {
-      await connectDB();
-      dbConnected = true;
+// ── CORS ──────────────────────────────────────────────────────────────────────
+// Allow localhost dev + any Vercel deployment (preview & production)
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow server-to-server / curl (no origin header)
+    if (!origin) return callback(null, true);
+    if (
+      origin === 'http://localhost:5173' ||
+      origin === 'http://localhost:3000' ||
+      origin.endsWith('.vercel.app') ||
+      origin === process.env.FRONTEND_URL
+    ) {
+      return callback(null, true);
     }
-    next();
-  } catch (err) {
-    next(err);
-  }
-});
+    return callback(new Error(`CORS blocked: ${origin}`));
+  },
+  credentials: true,
+}));
 
-app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Routes
-const apptRoutes = require('./routes/appointments');
+// ── Lazy DB connection for serverless ────────────────────────────────────────
+let dbConnected = false;
+app.use(async (req, res, next) => {
+  if (dbConnected) return next();
+  try {
+    await connectDB();
+    dbConnected = true;
+    next();
+  } catch (err) {
+    console.error('DB connection failed:', err.message);
+    return res.status(503).json({
+      message: 'Database unavailable. Check MONGODB_URI in environment variables.',
+      error: err.message,
+    });
+  }
+});
 
-// Socket.io not available in serverless
-if (typeof apptRoutes.setIO === 'function') {
-  apptRoutes.setIO(null);
-}
+// ── Routes ────────────────────────────────────────────────────────────────────
+const apptRoutes = require('./routes/appointments');
+if (typeof apptRoutes.setIO === 'function') apptRoutes.setIO(null);
 
 app.get('/', (req, res) => {
   res.json({
@@ -60,19 +72,25 @@ app.get('/api/health', (req, res) => {
     status: 'ok',
     version: '7.0.0',
     time: new Date(),
+    dbConnected,
     features: ['live-queue', 'prescriptions', 'ai-triage', 'email-notifications'],
   });
 });
 
+// ── 404 ───────────────────────────────────────────────────────────────────────
 app.use((req, res) => {
   res.status(404).json({
     message: 'Route not found',
     path: req.originalUrl,
-    available: ['/', '/api/health'],
   });
 });
 
+// ── Global error handler ──────────────────────────────────────────────────────
 app.use((err, req, res, next) => {
+  // CORS errors
+  if (err.message && err.message.startsWith('CORS blocked')) {
+    return res.status(403).json({ message: err.message });
+  }
   console.error(err.stack);
   res.status(500).json({
     message: 'Server error',
