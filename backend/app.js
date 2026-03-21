@@ -1,36 +1,18 @@
 require('dotenv').config();
 const express = require('express');
-const cors = require('cors');
 const connectDB = require('./config/db');
 
 const app = express();
 
-// ── CORS must be FIRST — before everything including DB middleware ─────────────
-const corsOptions = {
-  origin: function (origin, callback) {
-    // Allow server-to-server / curl (no origin header)
-    if (!origin) return callback(null, true);
-    if (
-      origin.includes('localhost') ||
-      origin.endsWith('.vercel.app') ||
-      (process.env.FRONTEND_URL && origin === process.env.FRONTEND_URL)
-    ) {
-      return callback(null, true);
-    }
-    // In development, allow all
-    if (process.env.NODE_ENV !== 'production') return callback(null, true);
-    return callback(new Error(`CORS blocked: ${origin}`));
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-  optionsSuccessStatus: 200,
-};
-
-app.use(cors(corsOptions));
-
-// Handle preflight OPTIONS requests immediately — must be before all routes
-app.options('*', cors(corsOptions));
+// ── CORS — allow all origins (handles all Vercel preview + production URLs) ───
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,PATCH,OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With');
+  if (req.method === 'OPTIONS') return res.sendStatus(200);
+  next();
+});
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
@@ -92,9 +74,6 @@ app.use((req, res) => {
 
 // ── Global error handler ──────────────────────────────────────────────────────
 app.use((err, req, res, next) => {
-  if (err.message && err.message.startsWith('CORS blocked')) {
-    return res.status(403).json({ message: err.message });
-  }
   console.error(err.stack);
   res.status(500).json({ message: 'Server error', error: err.message });
 });
