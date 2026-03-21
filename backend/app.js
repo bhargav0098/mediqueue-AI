@@ -5,8 +5,7 @@ const connectDB = require('./config/db');
 
 const app = express();
 
-// ── CORS ──────────────────────────────────────────────────────────────────────
-// Allow localhost dev + any Vercel deployment (preview & production)
+// ── CORS must be FIRST — before everything including DB middleware ─────────────
 app.use(cors({
   origin: function (origin, callback) {
     // Allow server-to-server / curl (no origin header)
@@ -15,14 +14,19 @@ app.use(cors({
       origin === 'http://localhost:5173' ||
       origin === 'http://localhost:3000' ||
       origin.endsWith('.vercel.app') ||
-      origin === process.env.FRONTEND_URL
+      (process.env.FRONTEND_URL && origin === process.env.FRONTEND_URL)
     ) {
       return callback(null, true);
     }
     return callback(new Error(`CORS blocked: ${origin}`));
   },
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
+
+// Handle preflight OPTIONS requests immediately
+app.options('*', cors());
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
@@ -79,23 +83,16 @@ app.get('/api/health', (req, res) => {
 
 // ── 404 ───────────────────────────────────────────────────────────────────────
 app.use((req, res) => {
-  res.status(404).json({
-    message: 'Route not found',
-    path: req.originalUrl,
-  });
+  res.status(404).json({ message: 'Route not found', path: req.originalUrl });
 });
 
 // ── Global error handler ──────────────────────────────────────────────────────
 app.use((err, req, res, next) => {
-  // CORS errors
   if (err.message && err.message.startsWith('CORS blocked')) {
     return res.status(403).json({ message: err.message });
   }
   console.error(err.stack);
-  res.status(500).json({
-    message: 'Server error',
-    error: err.message,
-  });
+  res.status(500).json({ message: 'Server error', error: err.message });
 });
 
 module.exports = app;
