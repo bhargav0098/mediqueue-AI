@@ -1,7 +1,12 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+// Fallback to production backend if env var not set at build time
+const API = (import.meta.env.VITE_API_URL && !import.meta.env.VITE_API_URL.startsWith('VITE_'))
+  ? import.meta.env.VITE_API_URL
+  : typeof window !== 'undefined' && window.location.hostname !== 'localhost'
+    ? 'https://mediqueue-ai-fy3k.vercel.app/api'
+    : 'http://localhost:5000/api';
 const Ctx = createContext(null);
 
 export const AuthProvider = ({ children }) => {
