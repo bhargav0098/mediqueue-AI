@@ -4,13 +4,23 @@ const connectDB = require('./config/db');
 
 const app = express();
 
-// ── CORS — allow all origins (handles all Vercel preview + production URLs) ───
+// ── CORS — must be absolute first middleware ──────────────────────────────────
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,PATCH,OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With');
-  if (req.method === 'OPTIONS') return res.sendStatus(200);
+  const origin = req.headers.origin;
+  // Echo back the exact origin (required when credentials:true)
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,PATCH,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With');
+  res.setHeader('Access-Control-Max-Age', '86400');
+  // Respond to preflight immediately
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
   next();
 });
 
@@ -39,11 +49,7 @@ const apptRoutes = require('./routes/appointments');
 if (typeof apptRoutes.setIO === 'function') apptRoutes.setIO(null);
 
 app.get('/', (req, res) => {
-  res.json({
-    status: 'ok',
-    message: 'MediQueueAI backend is running',
-    health: '/api/health',
-  });
+  res.json({ status: 'ok', message: 'MediQueueAI backend is running', health: '/api/health' });
 });
 
 app.use('/api/auth', require('./routes/auth'));
@@ -58,21 +64,13 @@ app.use('/api/prescriptions', require('./routes/prescriptions'));
 app.use('/api/users', require('./routes/users'));
 
 app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'ok',
-    version: '7.0.0',
-    time: new Date(),
-    dbConnected,
-    features: ['live-queue', 'prescriptions', 'ai-triage', 'email-notifications'],
-  });
+  res.json({ status: 'ok', version: '7.0.0', time: new Date(), dbConnected });
 });
 
-// ── 404 ───────────────────────────────────────────────────────────────────────
 app.use((req, res) => {
   res.status(404).json({ message: 'Route not found', path: req.originalUrl });
 });
 
-// ── Global error handler ──────────────────────────────────────────────────────
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ message: 'Server error', error: err.message });
