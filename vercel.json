@@ -6,7 +6,7 @@
   ],
   "routes": [
     { "src": "/api/(.*)", "dest": "backend/app.js" },
-    { "handle": "filesystem" },
+    { "src": "/(.*\\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot|map))", "dest": "frontend/dist/$1" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
